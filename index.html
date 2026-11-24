@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Informasi Kebencanaan Banjir - Kab. Morowali Utara (DIBI BNPB)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS & JS untuk Visualisasi Spasial -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Chart.js untuk Visualisasi Tren & Dampak -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <!-- Font Awesome untuk Ikon Kebencanaan & UI -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        sik: {
+                            dark: '#0f4c5c',
+                            primary: '#1d6f8a',
+                            light: '#e6f2f5',
+                            bg: '#f4f7f9',
+                            accent: '#e36414',
+                            warning: '#fb8b24',
+                            danger: '#9a031e'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f4f7f9;
+            color: #1e293b;
+        }
+        #map-morowali {
+            height: 360px;
+            width: 100%;
+            border-radius: 0.75rem;
+            z-index: 10;
+        }
+        .card-sik {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.875rem;
+            box-shadow: 0 2px 10px -2px rgba(15, 76, 92, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-sik:hover {
+            box-shadow: 0 8px 20px -4px rgba(15, 76, 92, 0.09);
+        }
+        .phase-highlight {
+            ring: 2px;
+            border-color: #1d6f8a !important;
+            background-color: #f0f9ff !important;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <!-- =====================================================================
+         1. HEADER & METADATA KEBENCANAAN (Syarat Spesifikasi & Skenario 3 UAT)
+         ===================================================================== -->
+    <header class="bg-gradient-to-r from-[#0b3945] via-[#0f4c5c] to-[#1d6f8a] text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+            <!-- Top Bar: Badge & Tombol UAT / Metadata -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/15">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-white/15 text-cyan-100 border border-white/20">
+                        <i class="fa-solid fa-shield-halved"></i> SISTEM INFORMASI KEBENCANAAN (SIK)
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-amber-500/20 text-amber-200 border border-amber-400/30">
+                        <i class="fa-solid fa-water"></i> Bencana Hidrometeorologi: Banjir (Kode: 1010)
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-500/20 text-emerald-200 border border-emerald-400/30">
+                        <i class="fa-solid fa-database"></i> Sumber Resmi: DIBI - BNPB
+                    </span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="openModal('modal-metadata')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/25 transition cursor-pointer">
+                        <i class="fa-solid fa-circle-info"></i> Metadata & Batasan Data
+                    </button>
+                    <button onclick="openModal('modal-uat')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-sm transition cursor-pointer">
+                        <i class="fa-solid fa-clipboard-check"></i> Panduan Uji Fungsi & UAT
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Title & Target User -->
+            <div class="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                <div class="lg:col-span-8">
+                    <h1 class="font-display text-xl sm:text-2xl lg:text-[26px] font-bold tracking-tight text-white leading-snug">
+                        Dashboard Informasi Kebencanaan Banjir Kabupaten Morowali Utara (Kode: 72.12), Sulawesi Tengah
+                    </h1>
+                    <p class="mt-1.5 text-xs sm:text-sm text-cyan-100/90 flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <span><i class="fa-solid fa-users-gear mr-1 text-cyan-300"></i> <strong>Pengguna Sasaran:</strong> BPBD Kab. Morowali Utara & Pemda (Fase Mitigasi & Tanggap Darurat)</span>
+                        <span><i class="fa-regular fa-calendar-check mr-1 text-cyan-300"></i> <strong>Periode:</strong> 2015–2026</span>
+                        <span><i class="fa-solid fa-clock-rotate-left mr-1 text-cyan-300"></i> <strong>Pemutakhiran:</strong> 24 November 2026</span>
+                    </p>
+                </div>
+
+                <!-- Pertanyaan Keputusan Utama -->
+                <div class="lg:col-span-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-3.5">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5 mb-1">
+                        <i class="fa-solid fa-compass"></i> Pertanyaan Keputusan Utama
+                    </div>
+                    <p class="text-xs text-white/95 leading-relaxed">
+                        "Bagaimana tren historis, distribusi musiman, dan tingkat kerusakan banjir di Kabupaten Morowali Utara guna menentukan prioritas alokasi logistik tanggap darurat serta perencanaan mitigasi infrastruktur?"
+                    </p>
+                </div>
+            </div>
+
+            <!-- Metadata Strip Bar (Langsung terlihat tanpa klik untuk Skenario 3 UAT) -->
+            <div class="mt-4 pt-3 border-t border-white/15 flex flex-wrap items-center justify-between gap-2 text-[11px] text-cyan-100">
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span><strong>Sumber Data:</strong> Data Informasi Bencana Indonesia (DIBI) - BNPB (<a href="https://dibi.bnpb.go.id" target="_blank" rel="noopener" class="underline hover:text-white">dibi.bnpb.go.id</a>)</span>
+                    <span><strong>Granularitas Spasial:</strong> Agregat Tingkat Kabupaten (72.12)</span>
+                </div>
+                <div class="text-amber-200 font-medium">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Batasan: Tanpa titik koordinat fiktif; 9 log kejadian rinci (Apr 2025–Jul 2026) dari total 43 kejadian historis.
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- =====================================================================
+         MAIN CONTENT CONTAINER
+         ===================================================================== -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- =================================================================
+             2. PANEL FILTER INTERAKTIF (Syarat Detail & Interaksi + Skenario 2 UAT)
+             ================================================================= -->
+        <section aria-label="Filter Interaktif" class="card-sik p-4">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-lg bg-sik-light text-sik-dark flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-800">Filter Analisis & Fase Siklus Bencana</h2>
+                        <p class="text-xs text-slate-500">Sesuaikan periode pengamatan atau soroti indikator berdasarkan kebutuhan keputusan</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:items-center gap-3">
+                    <!-- Filter Tahun -->
+                    <div class="flex flex-col">
+                        <label for="filter-tahun" class="text-[11px] font-semibold text-slate-500 uppercase mb-1">Periode Tahun</label>
+                        <select id="filter-tahun" onchange="applyFilters()" class="bg-slate-50 border border-slate-300 text-slate-800 text-xs font-medium rounded-lg px-3 py-2 focus:ring-2 focus:ring-sik-primary focus:border-sik-primary outline-none">
+                            <option value="all">Semua Tahun (2015–2026) [43 Kejadian]</option>
+                            <option value="2026">Tahun 2026 (Jan–Jul) [2 Kejadian]</option>
+                            <option value="2025">Tahun 2025 (Apr–Agu) [7 Kejadian]</option>
+                            <option value="2015-2024">Periode Historis (2015–2024) [34 Kejadian]</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Fase Keputusan -->
+                    <div class="flex flex-col">
+                        <label for="filter-fase" class="text-[11px] font-semibold text-slate-500 uppercase mb-1">Fokus Fase Keputusan</label>
+                        <select id="filter-fase" onchange="applyFilters()" class="bg-slate-50 border border-slate-300 text-slate-800 text-xs font-medium rounded-lg px-3 py-2 focus:ring-2 focus:ring-sik-primary focus:border-sik-primary outline-none">
+                            <option value="all">Semua Fase Kebencanaan</option>
+                            <option value="mitigasi">Mitigasi & Kesiapsiagaan (Pra-Bencana)</option>
+                            <option value="respons">Tanggap Darurat / Respons (Saat Bencana)</option>
+                            <option value="pemulihan">Pemulihan / Rehabilitasi (Pasca-Bencana)</option>
+                        </select>
+                    </div>
+
+                    <!-- Tombol Reset -->
+                    <div class="flex flex-col justify-end">
+                        <label class="text-[11px] text-transparent hidden sm:block mb-1">Aksi</label>
+                        <button onclick="resetFilters()" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition cursor-pointer">
+                            <i class="fa-solid fa-rotate-left"></i> Reset Filter
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Banner Konteks Fase Aktif -->
+            <div id="phase-context-banner" class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-sik-primary"></span>
+                    <span id="phase-context-text">Menampilkan keseluruhan profil kejadian, dampak jiwa, dan kerusakan fisik banjir di Kabupaten Morowali Utara (2015–2026).</span>
+                </div>
+                <span id="active-filter-badge" class="hidden sm:inline-block px-2 py-0.5 rounded bg-sik-light text-sik-dark font-semibold text-[11px]">
+                    Filter: Semua Periode
+                </span>
+            </div>
+        </section>
+
+        <!-- =================================================================
+             3. RINGKASAN INDIKATOR UTAMA / KPI CARDS (5 Indikator Utama)
+             ================================================================= -->
+        <section aria-label="Ringkasan Indikator Utama">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-display text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-sik-primary"></i>
+                    Ringkasan Indikator Dampak Banjir (Morowali Utara)
+                </h2>
+                <span class="text-xs text-slate-500">Satuan: Kejadian, Jiwa, Unit Rumah & Indeks Kerugian DIBI</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <!-- KPI 1: Total Kejadian -->
+                <div id="kpi-card-kejadian" class="card-sik p-4 border-l-4 border-l-sik-primary">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Kejadian Banjir</p>
+                            <div class="mt-1.5 flex items-baseline gap-1.5">
+                                <span id="kpi-val-kejadian" class="font-display text-2xl font-extrabold text-slate-900">43</span>
+                                <span class="text-xs font-semibold text-slate-600">Kejadian</span>
+                            </div>
+                        </div>
+                        <div class="w-9 h-9 rounded-lg bg-cyan-50 text-sik-primary flex items-center justify-center">
+                            <i class="fa-solid fa-cloud-showers-water text-base"></i>
+                        </div>
+                    </div>
+                    <p id="kpi-sub-kejadian" class="mt-2.5 text-[11px] text-slate-600 bg-slate-50 px-2 py-1 rounded">
+                        2 kejadian di 2026 | 7 kejadian di Apr–Agu 2025
+                    </p>
+                </div>
+
+                <!-- KPI 2: Korban Terdampak / Mengungsi -->
+                <div id="kpi-card-terdampak" class="card-sik p-4 border-l-4 border-l-amber-500">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Jiwa Terdampak / Mengungsi</p>
+                            <div class="mt-1.5 flex items-baseline gap-1.5">
+                                <span id="kpi-val-terdampak" class="font-display text-2xl font-extrabold text-slate-900">44.800</span>
+                                <span class="text-xs font-semibold text-slate-600">Jiwa</span>
+                            </div>
+                        </div>
+                        <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <i class="fa-solid fa-people-roof text-base"></i>
+                        </div>
+                    </div>
+                    <p id="kpi-sub-terdampak" class="mt-2.5 text-[11px] text-slate-600 bg-slate-50 px-2 py-1 rounded">
+                        Tercatat 504 jiwa terdampak pada Juli 2026
+                    </p>
+                </div>
+
+                <!-- KPI 3: Korban Meninggal & Hilang -->
+                <div id="kpi-card-meninggal" class="card-sik p-4 border-l-4 border-l-rose-700">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Meninggal & Hilang</p>
+                            <div class="mt-1.5 flex items-baseline gap-1.5">
+                                <span id="kpi-val-meninggal" class="font-display text-2xl font-extrabold text-slate-900">1</span>
+                                <span class="text-xs font-semibold text-slate-600">Jiwa</span>
+                            </div>
+                        </div>
+                        <div class="w-9 h-9 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center">
+                            <i class="fa-solid fa-heart-pulse text-base"></i>
+                        </div>
+                    </div>
+                    <p id="kpi-sub-meninggal" class="mt-2.5 text-[11px] text-slate-600 bg-slate-50 px-2 py-1 rounded">
+                        Fatalitas rendah; dominan dampak pengungsian
+                    </p>
+                </div>
+
+                <!-- KPI 4: Total Rumah Terendam -->
+                <div id="kpi-card-terendam" class="card-sik p-4 border-l-4 border-l-blue-600">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Rumah Terendam</p>
+                            <div class="mt-1.5 flex items-baseline gap-1.5">
+                                <span id="kpi-val-terendam" class="font-display text-2xl font-extrabold text-slate-900">4.010</span>
+                                <span class="text-xs font-semibold text-slate-600">Unit</span>
+                            </div>
+                        </div>
+                        <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <i class="fa-solid fa-house-flood-water text-base"></i>
+                        </div>
+                    </div>
+                    <p id="kpi-sub-terendam" class="mt-2.5 text-[11px] text-slate-600 bg-slate-50 px-2 py-1 rounded">
+                        93,7% dari total dampak permukiman (4.279 unit)
+                    </p>
+                </div>
+
+                <!-- KPI 5: Kerusakan Fisik & Estimasi Kerugian -->
+                <div id="kpi-card-kerusakan" class="card-sik p-4 border-l-4 border-l-teal-600">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Rumah Rusak & Kerugian</p>
+                            <div class="mt-1.5 flex items-baseline gap-1.5">
+                                <span id="kpi-val-rusak" class="font-display text-2xl font-extrabold text-slate-900">269</span>
+                                <span class="text-xs font-semibold text-slate-600">Unit Rusak</span>
+                            </div>
+                        </div>
+                        <div class="w-9 h-9 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
+                            <i class="fa-solid fa-house-crack text-base"></i>
+                        </div>
+                    </div>
+                    <p id="kpi-sub-rusak" class="mt-2.5 text-[11px] text-slate-600 bg-slate-50 px-2 py-1 rounded">
+                        7 Berat, 1 Sedang, 261 Ringan | Est. Kerugian: <strong>8.370</strong>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================
+             4. VISUALISASI TREN WAKTU & KOMPOSISI DAMPAK (Chart.js)
+             ================================================================= -->
+        <section aria-label="Grafik Tren dan Komposisi Dampak" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Grafik 1: Tren Waktu (7 kolom) -->
+            <div class="lg:col-span-7 card-sik p-5 flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-wrap items-start justify-between gap-2 mb-3">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-sik-primary">Visualisasi Tren Temporal</span>
+                            <h3 class="font-display text-base font-bold text-slate-800">
+                                Tren Bulanan Kejadian Banjir Tercatat Rinci (2025–2026)
+                            </h3>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-cyan-50 text-sik-dark border border-cyan-200">
+                            9 Log Terakhir DIBI
+                        </span>
+                    </div>
+                    <div class="relative h-64 w-full">
+                        <canvas id="chartTrenBanjir"></canvas>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600 flex items-start gap-2">
+                    <i class="fa-solid fa-lightbulb text-amber-500 mt-0.5"></i>
+                    <p>
+                        <strong>Interpretasi Musiman:</strong> Seluruh 9 kejadian tercatat rinci terkonsentrasi pada rentang <strong>April hingga Agustus</strong> (puncak pada April, Juni, dan Agustus 2025 masing-masing 2 kejadian), menandakan kerentanan hidrometeorologi tinggi pada periode tersebut.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Grafik 2: Komposisi Kerusakan Rumah (5 kolom) -->
+            <div class="lg:col-span-5 card-sik p-5 flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-wrap items-start justify-between gap-2 mb-3">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-sik-primary">Distribusi Dampak Permukiman</span>
+                            <h3 class="font-display text-base font-bold text-slate-800">
+                                Komposisi Kerusakan & Genangan Rumah
+                            </h3>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700">
+                            Total: 4.279 Unit
+                        </span>
+                    </div>
+                    <div class="relative h-64 w-full">
+                        <canvas id="chartKerusakanRumah"></canvas>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600 flex items-start gap-2">
+                    <i class="fa-solid fa-circle-info text-sik-primary mt-0.5"></i>
+                    <p>
+                        <strong>Karakteristik Dampak:</strong> Banjir di Morowali Utara didominasi luapan genangan (<strong>4.010 unit terendam</strong>) dibandingkan kerusakan struktural berat (7 unit), sehingga fokus utama fase respons adalah evakuasi sementara & logistik dasar.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================
+             5. VISUALISASI SPASIAL / PETA SEBARAN (Leaflet.js)
+             ================================================================= -->
+        <section aria-label="Peta Sebaran Spasial Kebencanaan" class="card-sik p-5">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+                <div>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-sik-primary">Visualisasi Spasial (Granularitas Resmi Tingkat Kabupaten)</span>
+                    <h3 class="font-display text-base font-bold text-slate-800">
+                        Peta Wilayah Terdampak Banjir: Kabupaten Morowali Utara (Kode BPS/DIBI: 72.12)
+                    </h3>
+                </div>
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                    <i class="fa-solid fa-location-crosshairs text-amber-600"></i>
+                    <span>Kepatuhan Spasial: Agregat Kabupaten 72.12 (Tanpa titik koordinat kejadian fiktif)</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                <!-- Peta Interaktif Leaflet (8 kolom) -->
+                <div class="lg:col-span-8 relative">
+                    <div id="map-morowali" class="border border-slate-200 shadow-inner"></div>
+                </div>
+
+                <!-- Panel Keterangan & Perbandingan Wilayah Kontekstual (4 kolom) -->
+                <div class="lg:col-span-4 flex flex-col justify-between bg-slate-50 rounded-xl p-4 border border-slate-200/80 space-y-4">
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-layer-group text-sik-primary"></i> Profil Spasial & Legenda Peta
+                        </h4>
+                        <ul class="space-y-2 text-xs text-slate-600">
+                            <li class="flex items-start gap-2">
+                                <span class="w-3.5 h-3.5 rounded-full bg-[#1d6f8a]/30 border-2 border-[#0f4c5c] shrink-0 mt-0.5"></span>
+                                <span><strong>Zona Fokus Utama (Morowali Utara - 72.12):</strong> Cakupan agregat kabupaten dengan 43 kejadian banjir, 44.800 jiwa terdampak, dan 4.010 rumah terendam.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-white shadow shrink-0 mt-0.5"></span>
+                                <span><strong>Titik Referensi Administratif:</strong> Ibu Kota Kabupaten (Kolonodale, Kec. Petasia) sebagai pusat koordinasi BPBD & posko logistik daerah.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="w-3.5 h-3.5 rounded-full bg-slate-400/30 border border-slate-400 shrink-0 mt-0.5"></span>
+                                <span><strong>Konteks Wilayah Tetangga (Sulteng):</strong> Kab. Morowali (72.06), Kab. Poso (72.02), dan Kab. Tojo Una-Una (72.09) sebagai wilayah penyangga regional.</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
+                        <strong class="text-slate-800 block mb-1"><i class="fa-solid fa-shield-cat text-sik-primary mr-1"></i> Catatan Integritas Data Spasial:</strong>
+                        Sesuai kaidah manajemen data kebencanaan, portal DIBI menampilkan atribut lokasi hingga tingkat Kabupaten (72.12). Dashboard ini tidak menempatkan pin koordinat acak/perkiraan pada titik desa/kecamatan agar tidak menyesatkan pengambilan keputusan lapangan.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================
+             6. TABEL DETAIL KEJADIAN & BUKTI PENDUKUNG (Syarat >= 1 Tabel + Bukti)
+             ================================================================= -->
+        <section aria-label="Tabel Log Kejadian dan Bukti Pendukung" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Tabel Log Kejadian (8 kolom) -->
+            <div class="lg:col-span-8 card-sik p-5 flex flex-col">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-sik-primary">Data Terstruktur (Clean Dataset)</span>
+                        <h3 class="font-display text-base font-bold text-slate-800">
+                            Log Kejadian Banjir Kabupaten Morowali Utara (9 Catatan Terbaru DIBI)
+                        </h3>
+                    </div>
+
+                    <!-- Search Box -->
+                    <div class="relative w-full sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="search-table" onkeyup="filterTable()" placeholder="Cari tanggal, bulan, atau ID..." class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sik-primary focus:border-sik-primary outline-none">
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
+                                <th class="py-2.5 px-3">ID Kejadian (DIBI)</th>
+                                <th class="py-2.5 px-3">Tanggal & Waktu</th>
+                                <th class="py-2.5 px-3">Periode (Mgg/Bln/Thn)</th>
+                                <th class="py-2.5 px-3">Wilayah (Kode)</th>
+                                <th class="py-2.5 px-3">Dampak Tercatat</th>
+                                <th class="py-2.5 px-3">Status Data</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body-kejadian" class="divide-y divide-slate-200 text-xs text-slate-700">
+                            <!-- Diisi secara dinamis oleh JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+                    <span id="table-count-info">Menampilkan 9 dari 9 log kejadian rinci (Bagian dari 43 total kejadian historis 2015–2026)</span>
+                    <span>Sumber: Tabel Dampak Kejadian Bencana DIBI BNPB</span>
+                </div>
+            </div>
+
+            <!-- Panel Bukti Pendukung & Dokumentasi Data (4 kolom) -->
+            <div class="lg:col-span-4 card-sik p-5 flex flex-col justify-between bg-gradient-to-b from-white to-slate-50/70">
+                <div>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-sik-primary">Triangulasi & Validasi Konteks</span>
+                    <h3 class="font-display text-base font-bold text-slate-800 mt-0.5 mb-3">
+                        Bukti Pendukung & Keterlacakan SIK
+                    </h3>
+
+                    <div class="space-y-3 text-xs">
+                        <!-- Bukti 1: Laporan Situasi -->
+                        <div class="p-3 rounded-xl bg-white border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-slate-800 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-file-lines text-sik-primary"></i> Laporan Situasi & Berita Resmi
+                                </span>
+                                <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">Terverifikasi</span>
+                            </div>
+                            <p class="text-slate-600 leading-relaxed">
+                                Rujukan silang laporan Pusat Pengendalian Operasi (Pusdalops) BPBD Provinsi Sulawesi Tengah & rilis berita kebencanaan terkait luapan DAS Laa dan Sungai Tambalako di wilayah Morowali Utara pada musim hujan pertengahan tahun (April–Agustus).
+                            </p>
+                        </div>
+
+                        <!-- Bukti 2: Indikator Bulanan Juli 2026 -->
+                        <div class="p-3 rounded-xl bg-white border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-slate-800 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-chart-line text-amber-600"></i> Snapshot Evaluasi Juli 2026
+                                </span>
+                                <span class="text-[10px] px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-semibold">YoY Comparison</span>
+                            </div>
+                            <p class="text-slate-600 leading-relaxed">
+                                Pada <strong>Juli 2026</strong> tercatat 1 kejadian banjir dengan <strong>504 jiwa terdampak</strong> (+0,0% YoY) dan estimasi kerugian rumah sebesar <strong>168</strong> (turun <strong>-77,1%</strong> dibandingkan bulan yang sama tahun sebelumnya).
+                            </p>
+                        </div>
+
+                        <!-- Bukti 3: Etika & Privasi -->
+                        <div class="p-3 rounded-xl bg-sik-light/60 border border-cyan-200/80">
+                            <div class="font-bold text-sik-dark mb-1 flex items-center gap-1.5">
+                                <i class="fa-solid fa-user-shield"></i> Kepatuhan Etika & Privasi SIK
+                            </div>
+                            <p class="text-slate-700 text-[11px] leading-relaxed">
+                                Seluruh data telah diagregasi pada tingkat kejadian dan wilayah tanpa memuat informasi identitas pribadi (PII) korban jiwa maupun pengungsi.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500">
+                    <i class="fa-solid fa-link mr-1 text-sik-primary"></i> Rujukan Primer: Portal DIBI BNPB (Diakses & dimutakhirkan: 24 Nov 2026).
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================
+             7. KESIMPULAN KEPUTUSAN & REKOMENDASI BERBASIS DATA
+             (Syarat Wajib >= 2 Temuan, >= 2 Rekomendasi, + Batasan Data)
+             ================================================================= -->
+        <section aria-label="Kesimpulan Keputusan dan Rekomendasi" class="card-sik p-5 sm:p-6 border-t-4 border-t-sik-dark">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-200">
+                <div>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-sik-primary">Dukungan Keputusan (Decision Support System)</span>
+                    <h2 class="font-display text-lg font-bold text-slate-900">
+                        Temuan Utama, Rekomendasi Operasional & Batasan Analisis
+                    </h2>
+                </div>
+                <span class="text-xs font-medium text-slate-500">Selaras dengan Siklus Manajemen Bencana</span>
+            </div>
+
+            <div class="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Kolom 1: 3 Temuan Utama Berbasis Data -->
+                <div class="space-y-3">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-md bg-cyan-100 text-sik-dark flex items-center justify-center text-xs">1</span>
+                        Temuan Utama Berbasis Data (3 Temuan)
+                    </h3>
+                    
+                    <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                        <div class="text-xs font-bold text-sik-dark">T1. Dominasi Dampak Genangan & Pengungsian</div>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Dari 43 kejadian banjir, dampak terbesar berupa <strong>4.010 rumah terendam</strong> dan <strong>44.800 jiwa terdampak</strong>, sementara korban meninggal/hilang tercatat 1 jiwa. Karakteristik banjir bersifat genangan luas berdurasi menengah daripada banjir bandang berfatalitas tinggi.
+                        </p>
+                    </div>
+
+                    <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                        <div class="text-xs font-bold text-sik-dark">T2. Klaster Musiman Tinggi pada April–Agustus</div>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Seluruh 9 log kejadian terbaru (2025–2026) terjadi secara konsisten antara bulan <strong>April hingga Agustus</strong>, menunjukkan jendela kerawanan puncak yang berulang pada pertengahan tahun.
+                        </p>
+                    </div>
+
+                    <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                        <div class="text-xs font-bold text-sik-dark">T3. Penurunan Kerugian Fisik Namun Populasi Tetap Rentan</div>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Pada Juli 2026, estimasi kerugian rumah turun signifikan sebesar <strong>-77,1% YoY</strong> (menjadi 168), namun jumlah penduduk terdampak tetap tinggi di angka <strong>504 jiwa</strong> dalam satu kejadian tunggal.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Kolom 2: 3 Rekomendasi Operasional Terpetakan Fase -->
+                <div class="space-y-3">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center text-xs">2</span>
+                        Rekomendasi Keputusan per Fase (3 Rekomendasi)
+                    </h3>
+
+                    <div id="rec-card-mitigasi" class="p-3.5 rounded-xl bg-white border border-slate-200 shadow-sm space-y-1 transition">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-teal-800">R1. Fase Mitigasi & Kesiapsiagaan</span>
+                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-teal-50 text-teal-700">Pra-Bencana</span>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Melakukan pengerukan sedimentasi sungai, normalisasi drainase permukiman, dan aktivasi peringatan dini curah hujan secara intensif pada <strong>Kuartal I (Januari–Maret)</strong> sebelum memasuki klaster puncak banjir bulan April.
+                        </p>
+                    </div>
+
+                    <div id="rec-card-respons" class="p-3.5 rounded-xl bg-white border border-slate-200 shadow-sm space-y-1 transition">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-amber-800">R2. Fase Tanggap Darurat / Respons</span>
+                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-700">Saat Bencana</span>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Memprioritaskan <em>pre-positioning</em> logistik pengungsian (perahu evakuasi, tenda darurat, air bersih, dan paket sandang-pangan) di posko Kolonodale guna mengantisipasi ribuan warga terdampak genangan rumah.
+                        </p>
+                    </div>
+
+                    <div id="rec-card-pemulihan" class="p-3.5 rounded-xl bg-white border border-slate-200 shadow-sm space-y-1 transition">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-blue-800">R3. Fase Pemulihan / Rehabilitasi</span>
+                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700">Pasca-Bencana</span>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Menyalurkan stimulan perbaikan hunian secara bertahap dengan prioritas pada <strong>7 unit rumah rusak berat</strong> dan <strong>1 rusak sedang</strong>, diikuti verifikasi lapangan terhadap 261 unit rusak ringan serta pemulihan sanitasi pasca-surut.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Kolom 3: Batasan & Ketidakpastian Data -->
+                <div class="space-y-3">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-md bg-rose-100 text-rose-800 flex items-center justify-center text-xs">3</span>
+                        Batasan & Ketidakpastian Data
+                    </h3>
+
+                    <div class="p-4 rounded-xl bg-rose-50/50 border border-rose-200/80 space-y-3 text-xs text-slate-700">
+                        <div>
+                            <strong class="text-rose-900 block mb-0.5">1. Granularitas Spasial Tingkat Kabupaten</strong>
+                            <p class="leading-relaxed text-slate-600">
+                                Data agregat publik DIBI menyajikan kode wilayah hingga tingkat Kabupaten (72.12 - Morowali Utara). Analisis tingkat kecamatan/desa memerlukan integrasi lebih lanjut dengan basis data internal Pusdalops BPBD setempat.
+                            </p>
+                        </div>
+
+                        <div>
+                            <strong class="text-rose-900 block mb-0.5">2. Kelengkapan Atribut per Baris Kejadian</strong>
+                            <p class="leading-relaxed text-slate-600">
+                                Dari 43 total kejadian historis (2015–2026), 9 kejadian terbaru (April 2025–Juli 2026) terekstrak dalam tabel log rinci, sedangkan angka total dampak (44.800 jiwa terdampak & 4.010 rumah terendam) merupakan angka agregasi komprehensif portal DIBI.
+                            </p>
+                        </div>
+
+                        <div>
+                            <strong class="text-rose-900 block mb-0.5">3. Dinamika Pemutakhiran Data</strong>
+                            <p class="leading-relaxed text-slate-600">
+                                Angka estimasi kerugian rumah pada DIBI menggunakan satuan indeks/unit standar portal dan dapat mengalami penyesuaian seiring proses validasi akhir antara BPBD Kabupaten dan BNPB.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- =====================================================================
+         FOOTER
+         ===================================================================== -->
+    <footer class="bg-white border-t border-slate-200 mt-8 py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <div>
+                <strong>Prototipe Mini Project MDIK</strong> — Program Magister Teknologi Informasi | Kasus: Banjir Kab. Morowali Utara (72.12)
+            </div>
+            <div>
+                Sumber Data: <span class="font-medium text-slate-700">DIBI BNPB (dibi.bnpb.go.id)</span> • Pemutakhiran: <span class="font-medium text-slate-700">24 November 2026</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- =====================================================================
+         MODAL 1: METADATA LENGKAP & KAMUS DATA RINGKAS
+         ===================================================================== -->
+    <div id="modal-metadata" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[88vh] overflow-y-auto shadow-2xl border border-slate-200">
+            <div class="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                <h3 class="font-display text-base font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-database text-sik-primary"></i> Metadata Sumber Data & Kamus Data Ringkas
+                </h3>
+                <button onclick="closeModal('modal-metadata')" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4 text-xs text-slate-700">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <div><span class="text-slate-500 block">Instansi Penerbit:</span><strong>Badan Nasional Penanggulangan Bencana (BNPB)</strong></div>
+                    <div><span class="text-slate-500 block">Portal / URL Sumber:</span><strong>DIBI BNPB (https://dibi.bnpb.go.id)</strong></div>
+                    <div><span class="text-slate-500 block">Wilayah Administratif:</span><strong>Kab. Morowali Utara (Kode: 72.12), Prov. Sulawesi Tengah (Kode: 72)</strong></div>
+                    <div><span class="text-slate-500 block">Jenis & Kode Bencana:</span><strong>Banjir (Kode Kejadian: 1010)</strong></div>
+                    <div><span class="text-slate-500 block">Periode Pengamatan:</span><strong>Tahun 2015 – 2026 (43 Kejadian Total)</strong></div>
+                    <div><span class="text-slate-500 block">Tanggal Akses & Pembaruan:</span><strong>24 November 2026</strong></div>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-2">Kamus Data Variabel Utama (Data Dictionary)</h4>
+                    <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                        <table class="w-full text-left border-collapse text-[11px]">
+                            <thead class="bg-slate-100 text-slate-700 font-bold">
+                                <tr>
+                                    <th class="p-2 border-b">Variabel</th>
+                                    <th class="p-2 border-b">Tipe</th>
+                                    <th class="p-2 border-b">Satuan / Format</th>
+                                    <th class="p-2 border-b">Keterangan</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200">
+                                <tr><td class="p-2 font-mono">id_kejadian</td><td class="p-2">String (UUID)</td><td class="p-2">Kode Unik</td><td class="p-2">Identifier unik setiap kejadian di DIBI</td></tr>
+                                <tr><td class="p-2 font-mono">tanggal_waktu</td><td class="p-2">Datetime</td><td class="p-2">YYYY-MM-DD HH:MM:SS</td><td class="p-2">Waktu kejadian banjir tercatat</td></tr>
+                                <tr><td class="p-2 font-mono">kode_kabupaten</td><td class="p-2">String</td><td class="p-2">72.12</td><td class="p-2">Kode wilayah administratif Morowali Utara</td></tr>
+                                <tr><td class="p-2 font-mono">jiwa_terdampak</td><td class="p-2">Integer</td><td class="p-2">Jiwa</td><td class="p-2">Jumlah penduduk menderita & mengungsi</td></tr>
+                                <tr><td class="p-2 font-mono">rumah_terendam</td><td class="p-2">Integer</td><td class="p-2">Unit Rumah</td><td class="p-2">Jumlah rumah tergenang banjir</td></tr>
+                                <tr><td class="p-2 font-mono">rumah_rusak</td><td class="p-2">Integer</td><td class="p-2">Unit (RB/RS/RR)</td><td class="p-2">Rusak Berat (7), Sedang (1), Ringan (261)</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+                <button onclick="closeModal('modal-metadata')" class="px-4 py-2 rounded-lg text-xs font-semibold bg-sik-dark text-white hover:bg-sik-primary cursor-pointer">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         MODAL 2: PANDUAN PENGUJIAN FUNGSIONAL & UAT (3 SKENARIO TUGAS)
+         ===================================================================== -->
+    <div id="modal-uat" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[88vh] overflow-y-auto shadow-2xl border border-slate-200">
+            <div class="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                <h3 class="font-display text-base font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-check text-amber-500"></i> Panduan Functional Testing & UAT (3 Skenario Wajib)
+                </h3>
+                <button onclick="closeModal('modal-uat')" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4 text-xs text-slate-700">
+                <p class="text-slate-600 leading-relaxed">
+                    Gunakan daftar skenario berikut saat menguji prototipe dashboard ini kepada minimal <strong>2 responden di luar kelompok</strong> sesuai ketentuan Tahap Pengujian Fungsional & UAT:
+                </p>
+
+                <div class="space-y-2.5">
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <div class="font-bold text-sik-dark mb-1">Skenario 1: Menemukan wilayah paling terdampak menurut indikator yang dipilih</div>
+                        <p class="text-slate-600"><strong>Instruksi Uji:</strong> Minta responden mengidentifikasi wilayah cakupan studi, total kejadian (43 kejadian), jumlah jiwa terdampak (44.800 jiwa), dan rumah terendam (4.010 unit) melalui kartu KPI dan Peta Spasial Kabupaten Morowali Utara (72.12).</p>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <div class="font-bold text-sik-dark mb-1">Skenario 2: Membandingkan kondisi antarperiode atau antarwilayah</div>
+                        <p class="text-slate-600"><strong>Instruksi Uji:</strong> Minta responden menggunakan <em>Filter Periode Tahun</em> (misal: membandingkan Tahun 2025 vs 2026) atau mengamati grafik tren bulanan & perbandingan Juli 2026 terhadap tahun sebelumnya (-77,1% estimasi kerugian rumah).</p>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <div class="font-bold text-sik-dark mb-1">Skenario 3: Menemukan sumber data, batasan data, dan tanggal pembaruannya</div>
+                        <p class="text-slate-600"><strong>Instruksi Uji:</strong> Minta responden menyebutkan sumber data resmi (DIBI BNPB), tanggal pembaruan (24 November 2026), serta batasan granularitas data kabupaten pada header atau bagian <em>Batasan & Ketidakpastian Data</em>.</p>
+                    </div>
+                </div>
+
+                <!-- Simulasi Pencatatan Skor Cepat UAT -->
+                <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200">
+                    <div class="font-bold text-amber-900 mb-2">Parameter Penilaian Responden (Skala 1–5):</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                        <div class="bg-white p-2 rounded border border-amber-200">1. Kejelasan Visualisasi (1–5)</div>
+                        <div class="bg-white p-2 rounded border border-amber-200">2. Kemudahan Penggunaan (1–5)</div>
+                        <div class="bg-white p-2 rounded border border-amber-200">3. Kegunaan Dashboard (1–5)</div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+                <button onclick="closeModal('modal-uat')" class="px-4 py-2 rounded-lg text-xs font-semibold bg-sik-dark text-white hover:bg-sik-primary cursor-pointer">Siap Digunakan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         JAVASCRIPT LOGIC: DATA, CHARTS, MAP & INTERACTIVITY
+         ===================================================================== -->
+    <script>
+        // 1. DATASET LOG KEJADIAN TERBARU (9 Catatan Rinci dari Tabel DIBI BNPB)
+        const logKejadianData = [
+            {
+                id: "d38154dd-ae8d-444e-a69c-4c14405bf22e",
+                shortId: "d38154dd...bf22e",
+                tanggal: "2026-07-24",
+                waktu: "10:00:00",
+                minggu: 30,
+                bulan: 7,
+                namaBulan: "Juli",
+                tahun: 2026,
+                wilayah: "Morowali Utara (72.12)",
+                dampak: "504 Jiwa Terdampak • Est. Kerugian: 168",
+                status: "Tervalidasi (Log Rinci)"
+            },
+            {
+                id: "cd8cb02b-cb0e-4b61-a31d-26a3ab4ebeba",
+                shortId: "cd8cb02b...ebeba",
+                tanggal: "2026-05-04",
+                waktu: "06:20:00",
+                minggu: 19,
+                bulan: 5,
+                namaBulan: "Mei",
+                tahun: 2026,
+                wilayah: "Morowali Utara (72.12)",
+                dampak: "Tercatat pada Agregat Tahunan DIBI",
+                status: "Tervalidasi (Log Rinci)"
+            },
+            {
+                id: "69f0f1f2-4eee-470b-bdf2-93c41a423a39",
+                shortId: "69f0f1f2...23a39",
+                tanggal: "2025-08-20",
+                waktu: "12:00:00",
+                minggu: 34,
+                bulan: 8,
+                namaBulan: "Agustus",
+                tahun: 2025,
+                wilayah: "Morowali Utara (72.12)",
+                dampak: "Tercatat pada Agregat Tahunan DIBI",
+                status: "Tervalidasi (Log Rinci)"
+            },
+            {
+                id: "b3d41c48-7ead-4fe6-9bee2773d6b2",
+                shortId: "b3d41c48...3d6b2",
+                tanggal: "2025-08-09",
+                waktu: "00:02:00",
+                minggu: 32,
+                bulan: 8,
+                namaBulan: "Agustus",
+                tahun: 2025,
+                wilayah: "Morowali Utara (72.12)",
+                dampak: "Tercatat pada Agregat Tahunan DIBI",
+                status: "Tervalidasi (Log Rinci)"
+            },
+            {
+                id: "4ba42178-89d7-4043-b9b4-9c5e8962878f",
+                shortId: "4ba42178...2878f",
+                tanggal: "2025-06-15",
+                waktu: "21:03:00",
+                minggu: 24,
+                bulan: 6,
+                namaBulan: "Juni",
+                tahun: 2025,
+                wilayah: "Morowali Utara (72.12)",
+                dampak: "Tercatat pada Agregat Tahunan DIBI",
+                status: "Tervalidasi (Log Rinci)"
+            },
+            {
+                id: "ec8c89ae-6850-4a37-9628-8c60221df704",
+                shortId: "ec8c89ae...df704",
+                tanggal: "2025-06-14",
+                waktu: "20:30:00",
+                minggu: 24,
+                bulan: 6,
+                namaBulan: "Juni",
+                tahun: 2025,
+                wilayah: "Morowali Utara (72.12)",
+                dampak: "Tercatat pada Agregat Tahunan DIBI",
+                status: "Tervalidasi (Log Rinci)"
+            },
+            {
+                id: "6e64890c-1fec-4784-b059-6f4b92056264",
+                shortId: "6e64890c...56264",
+                tanggal: "2025-05-02",
+                waktu: "02:00:00",
+                minggu: 18,
+                bulan: 5,
+                namaBulan: "Mei",
+                tahun: 2025,
+                wilayah: "Morowali Utara (72.12)",
+                dampak: "Tercatat pada Agregat Tahunan DIBI",
+                status: "Tervalidasi (Log Rinci)"
+            },
+            {
+                id: "958cbd9b-2e0f-4794-adc6-e517d3a24783",
+                shortId: "958cbd9b...24783",
+                tanggal: "2025-04-03",
+                waktu: "22:00:00",
+                minggu: 14,
+                bulan: 4,
+                namaBulan: "April",
+                tahun: 2025,
+                wilayah: "Morowali Utara (72.12)",
+                dampak: "Tercatat pada Agregat Tahunan DIBI",
+                status: "Tervalidasi (Log Rinci)"
+            },
+            {
+                id: "eddabb02-11a2-4d9c-4",
+                shortId: "eddabb02...4d9c-4",
+                tanggal: "2025-04-02",
+                waktu: "22:59:00",
+                minggu: 14,
+                bulan: 4,
+                namaBulan: "April",
+                tahun: 2025,
+                wilayah: "Morowali Utara (72.12)",
+                dampak: "Tercatat pada Agregat Tahunan DIBI",
+                status: "Tervalidasi (Log Rinci)"
+            }
+        ];
+
+        // Data Agregat Berdasarkan Filter Tahun
+        const kpiPresets = {
+            "all": {
+                kejadian: "43",
+                subKejadian: "2 kejadian di 2026 | 7 kejadian di Apr–Agu 2025",
+                terdampak: "44.800",
+                subTerdampak: "Tercatat 504 jiwa terdampak pada Juli 2026",
+                meninggal: "1",
+                subMeninggal: "Fatalitas rendah; dominan dampak pengungsian",
+                terendam: "4.010",
+                subTerendam: "93,7% dari total dampak permukiman (4.279 unit)",
+                rusak: "269",
+                subRusak: "7 Berat, 1 Sedang, 261 Ringan | Est. Kerugian: 8.370"
+            },
+            "2026": {
+                kejadian: "2",
+                subKejadian: "Tercatat pada Mei 2026 (1) & Juli 2026 (1)",
+                terdampak: "504+",
+                subTerdampak: "504 jiwa terkonfirmasi pada Juli 2026 (+0,0% YoY)",
+                meninggal: "0*",
+                subMeninggal: "*Tidak ada laporan korban jiwa pada log 2026",
+                terendam: "Agregat",
+                subTerendam: "Tergabung dalam total 4.010 unit (2015–2026)",
+                rusak: "Agregat",
+                subRusak: "Est. Kerugian Juli 2026: 168 (-77,1% vs tahun lalu)"
+            },
+            "2025": {
+                kejadian: "7",
+                subKejadian: "Apr (2), Mei (1), Jun (2), Agu (2) — Puncak musim hujan",
+                terdampak: "Agregat",
+                subTerdampak: "Bagian dari kumulatif 44.800 jiwa terdampak",
+                meninggal: "Agregat",
+                subMeninggal: "Bagian dari kumulatif 1 jiwa meninggal/hilang",
+                terendam: "Agregat",
+                subTerendam: "Bagian dari kumulatif 4.010 rumah terendam",
+                rusak: "Agregat",
+                subRusak: "Bagian dari 269 rumah rusak (Est. total 8.370)"
+            },
+            "2015-2024": {
+                kejadian: "34",
+                subKejadian: "79,1% dari total 43 kejadian historis Morowali Utara",
+                terdampak: "Agregat",
+                subTerdampak: "Dominasi porsi historis dari 44.800 jiwa terdampak",
+                meninggal: "1",
+                subMeninggal: "Tercatat dalam periode historis sebelum 2025",
+                terendam: "Agregat",
+                subTerendam: "Dominasi porsi historis dari 4.010 rumah terendam",
+                rusak: "Agregat",
+                subRusak: "Dominasi porsi historis dari 269 unit rumah rusak"
+            }
+        };
+
+        let chartTrenInstance = null;
+        let chartKerusakanInstance = null;
+
+        // 2. INISIALISASI GRAFIK (Chart.js)
+        function initCharts() {
+            // Grafik 1: Tren Bulanan Kejadian Banjir (2025-2026)
+            const ctxTren = document.getElementById('chartTrenBanjir').getContext('2d');
+            chartTrenInstance = new Chart(ctxTren, {
+                type: 'bar',
+                data: {
+                    labels: ['Apr 2025', 'Mei 2025', 'Jun 2025', 'Jul 2025', 'Agu 2025', 'Mei 2026', 'Jul 2026'],
+                    datasets: [
+                        {
+                            label: 'Jumlah Kejadian Banjir',
+                            data: [2, 1, 2, 0, 2, 1, 1],
+                            backgroundColor: [
+                                '#1d6f8a', '#3b8ea5', '#1d6f8a', '#cbd5e1', '#1d6f8a', '#e36414', '#e36414'
+                            ],
+                            borderRadius: 6,
+                            barThickness: 28
+                        },
+                        {
+                            label: 'Garis Tren Frekuensi',
+                            data: [2, 1, 2, 0, 2, 1, 1],
+                            type: 'line',
+                            borderColor: '#0f4c5c',
+                            backgroundColor: '#0f4c5c',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            tension: 0.25
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { font: { family: 'Inter', size: 11 }, boxWidth: 12 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(ctx) {
+                                    if (ctx.label === 'Jul 2026') return 'Tercatat 504 jiwa terdampak & est. kerugian 168';
+                                    if (ctx.label === 'Jul 2025') return '0 kejadian pada log rinci Juli 2025';
+                                    return 'Periode rawan hidrometeorologi (Apr–Agu)';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, font: { size: 11 } },
+                            title: { display: true, text: 'Jumlah Kejadian', font: { size: 11, weight: 'bold' } },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            ticks: { font: { size: 11 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // Grafik 2: Komposisi Kerusakan & Genangan Rumah
+            const ctxRumah = document.getElementById('chartKerusakanRumah').getContext('2d');
+            chartKerusakanInstance = new Chart(ctxRumah, {
+                type: 'bar',
+                data: {
+                    labels: ['Rumah Terendam', 'Rusak Ringan', 'Rusak Berat', 'Rusak Sedang'],
+                    datasets: [{
+                        label: 'Jumlah Unit Rumah',
+                        data: [4010, 261, 7, 1],
+                        backgroundColor: ['#1d6f8a', '#fb8b24', '#9a031e', '#e36414'],
+                        borderRadius: 6,
+                        barThickness: 24
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const val = ctx.raw.toLocaleString('id-ID');
+                                    const pct = ((ctx.raw / 4279) * 100).toFixed(2);
+                                    return ` ${val} Unit (${pct}% dari total terdampak)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { font: { size: 11 } },
+                            title: { display: true, text: 'Jumlah Unit Rumah (Skala Linear)', font: { size: 11, weight: 'bold' } },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        y: {
+                            ticks: { font: { size: 11, weight: '600' } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3. INISIALISASI PETA SPASIAL (Leaflet.js)
+        function initMap() {
+            // Koordinat pusat administratif Kabupaten Morowali Utara (Kolonodale): -1.985, 121.335
+            const centerMorut = [-1.985, 121.335];
+            const map = L.map('map-morowali', {
+                scrollWheelZoom: false
+            }).setView(centerMorut, 8);
+
+            // Basemap bersih CartoDB Positron
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO | Data Kebencanaan: DIBI BNPB',
+                subdomains: 'abcd',
+                maxZoom: 18
+            }).addTo(map);
+
+            // Zona Cakupan Agregat Kabupaten Morowali Utara (Kode: 72.12)
+            const zonaMorut = L.circle([-1.92, 121.45], {
+                color: '#0f4c5c',
+                weight: 2.5,
+                fillColor: '#1d6f8a',
+                fillOpacity: 0.25,
+                radius: 42000 // Representasi zona administratif kabupaten
+            }).addTo(map);
+
+            zonaMorut.bindPopup(`
+                <div style="font-family: Inter, sans-serif; min-width: 220px;">
+                    <div style="font-size: 10px; font-weight: 700; color: #1d6f8a; text-transform: uppercase;">Wilayah Fokus Utama (Kode: 72.12)</div>
+                    <div style="font-size: 14px; font-weight: 800; color: #0f172a; margin-bottom: 6px;">Kab. Morowali Utara</div>
+                    <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
+                        <tr><td style="padding: 2px 0; color: #475569;">Total Kejadian:</td><td style="font-weight: 700; text-align: right;">43 Kejadian</td></tr>
+                        <tr><td style="padding: 2px 0; color: #475569;">Jiwa Terdampak:</td><td style="font-weight: 700; text-align: right;">44.800 Jiwa</td></tr>
+                        <tr><td style="padding: 2px 0; color: #475569;">Rumah Terendam:</td><td style="font-weight: 700; text-align: right;">4.010 Unit</td></tr>
+                        <tr><td style="padding: 2px 0; color: #475569;">Rumah Rusak:</td><td style="font-weight: 700; text-align: right;">269 Unit (7 RB)</td></tr>
+                    </table>
+                    <div style="margin-top: 6px; padding-top: 5px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #64748b;">
+                        *Agregat tingkat Kabupaten sesuai granularitas resmi DIBI BNPB.
+                    </div>
+                </div>
+            `).openPopup();
+
+            // Titik Referensi Pusat Administratif (Kolonodale / BPBD Kab. Morowali Utara)
+            const adminIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div style="background-color:#e36414; width:14px; height:14px; border-radius:50%; border:2.5px solid white; box-shadow:0 0 6px rgba(0,0,0,0.4);"></div>`,
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
+            });
+
+            L.marker(centerMorut, { icon: adminIcon }).addTo(map)
+                .bindPopup(`
+                    <div style="font-family: Inter, sans-serif; font-size: 11px;">
+                        <strong>Pusat Administratif: Kolonodale</strong><br/>
+                        Lokasi Kantor Pemerintah & Koordinasi BPBD Kab. Morowali Utara (Titik Referensi Resmi).
+                    </div>
+                `);
+
+            // Konteks Wilayah Tetangga di Sulawesi Tengah (Untuk pemahaman spasial regional)
+            const neighbors = [
+                { name: "Kab. Morowali (Kode: 72.06)", coords: [-2.65, 121.85], note: "Wilayah tetangga bagian selatan" },
+                { name: "Kab. Poso (Kode: 72.02)", coords: [-1.65, 120.65], note: "Wilayah tetangga bagian barat" },
+                { name: "Kab. Tojo Una-Una (Kode: 72.09)", coords: [-1.25, 121.65], note: "Wilayah tetangga bagian utara" }
+            ];
+
+            neighbors.forEach(nb => {
+                L.circleMarker(nb.coords, {
+                    radius: 6,
+                    color: '#64748b',
+                    fillColor: '#94a3b8',
+                    fillOpacity: 0.4,
+                    weight: 1.5
+                }).addTo(map).bindPopup(`<div style="font-family:Inter,sans-serif;font-size:11px;"><strong>${nb.name}</strong><br/>${nb.note}</div>`);
+            });
+        }
+
+        // 4. RENDER TABEL LOG KEJADIAN
+        function renderTable(dataList) {
+            const tbody = document.getElementById('table-body-kejadian');
+            tbody.innerHTML = '';
+
+            if (dataList.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-6 text-center text-slate-500 text-xs">
+                            Tidak ada catatan kejadian yang sesuai dengan filter atau kata kunci pencarian.
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('table-count-info').textContent = 'Menampilkan 0 log kejadian rinci';
+                return;
+            }
+
+            dataList.forEach(item => {
+                const badgeYearColor = item.tahun === 2026 
+                    ? 'bg-amber-100 text-amber-900 border-amber-200' 
+                    : 'bg-cyan-50 text-sik-dark border-cyan-200';
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50/90 transition';
+                tr.innerHTML = `
+                    <td class="py-2.5 px-3 font-mono text-[11px] text-slate-600" title="${item.id}">${item.shortId}</td>
+                    <td class="py-2.5 px-3 font-semibold text-slate-800 whitespace-nowrap">${item.tanggal} <span class="text-slate-400 font-normal">${item.waktu}</span></td>
+                    <td class="py-2.5 px-3 whitespace-nowrap">
+                        <span class="px-2 py-0.5 rounded border text-[11px] font-medium ${badgeYearColor}">
+                            Mgg ${item.minggu} • ${item.namaBulan} ${item.tahun}
+                        </span>
+                    </td>
+                    <td class="py-2.5 px-3 font-medium text-slate-700 whitespace-nowrap">${item.wilayah}</td>
+                    <td class="py-2.5 px-3 text-slate-600">${item.dampak}</td>
+                    <td class="py-2.5 px-3 whitespace-nowrap">
+                        <span class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                            <i class="fa-solid fa-check-circle text-[10px]"></i> ${item.status}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('table-count-info').textContent = 
+                `Menampilkan ${dataList.length} dari 9 log kejadian rinci (Bagian dari 43 total kejadian historis 2015–2026)`;
+        }
+
+        // 5. LOGIKA FILTER INTERAKTIF (Tahun, Fase & Pencarian)
+        function applyFilters() {
+            const tahunVal = document.getElementById('filter-tahun').value;
+            const faseVal = document.getElementById('filter-fase').value;
+
+            // Update KPI sesuai filter tahun
+            const preset = kpiPresets[tahunVal] || kpiPresets["all"];
+            document.getElementById('kpi-val-kejadian').textContent = preset.kejadian;
+            document.getElementById('kpi-sub-kejadian').textContent = preset.subKejadian;
+            document.getElementById('kpi-val-terdampak').textContent = preset.terdampak;
+            document.getElementById('kpi-sub-terdampak').textContent = preset.subTerdampak;
+            document.getElementById('kpi-val-meninggal').textContent = preset.meninggal;
+            document.getElementById('kpi-sub-meninggal').textContent = preset.subMeninggal;
+            document.getElementById('kpi-val-terendam').textContent = preset.terendam;
+            document.getElementById('kpi-sub-terendam').textContent = preset.subTerendam;
+            document.getElementById('kpi-val-rusak').textContent = preset.rusak;
+            document.getElementById('kpi-sub-rusak').textContent = preset.subRusak;
+
+            // Update Badge Filter Aktif
+            const filterLabels = {
+                "all": "Semua Periode (2015–2026)",
+                "2026": "Tahun 2026",
+                "2025": "Tahun 2025",
+                "2015-2024": "Historis 2015–2024"
+            };
+            document.getElementById('active-filter-badge').textContent = `Filter: ${filterLabels[tahunVal]}`;
+
+            // Sorot Kartu KPI & Rekomendasi berdasarkan Fase Keputusan
+            const allCards = ['kpi-card-kejadian', 'kpi-card-terdampak', 'kpi-card-meninggal', 'kpi-card-terendam', 'kpi-card-kerusakan'];
+            const allRecs = ['rec-card-mitigasi', 'rec-card-respons', 'rec-card-pemulihan'];
+
+            allCards.forEach(id => document.getElementById(id).classList.remove('phase-highlight'));
+            allRecs.forEach(id => document.getElementById(id).classList.remove('phase-highlight'));
+
+            const contextText = document.getElementById('phase-context-text');
+            if (faseVal === 'mitigasi') {
+                document.getElementById('kpi-card-kejadian').classList.add('phase-highlight');
+                document.getElementById('rec-card-mitigasi').classList.add('phase-highlight');
+                contextText.innerHTML = '<strong>Fokus Fase Mitigasi:</strong> Menyoroti frekuensi kejadian (43 kejadian) dan pola musiman April–Agustus untuk perencanaan normalisasi sungai & peringatan dini.';
+            } else if (faseVal === 'respons') {
+                document.getElementById('kpi-card-terdampak').classList.add('phase-highlight');
+                document.getElementById('kpi-card-terendam').classList.add('phase-highlight');
+                document.getElementById('rec-card-respons').classList.add('phase-highlight');
+                contextText.innerHTML = '<strong>Fokus Fase Tanggap Darurat / Respons:</strong> Menyoroti 44.800 jiwa terdampak & 4.010 rumah terendam untuk penentuan kapasitas posko pengungsian dan logistik darurat.';
+            } else if (faseVal === 'pemulihan') {
+                document.getElementById('kpi-card-kerusakan').classList.add('phase-highlight');
+                document.getElementById('rec-card-pemulihan').classList.add('phase-highlight');
+                contextText.innerHTML = '<strong>Fokus Fase Pemulihan / Rehabilitasi:</strong> Menyoroti 269 unit rumah rusak (7 Berat, 1 Sedang, 261 Ringan) dan estimasi kerugian (8.370) untuk alokasi dana rehabilitasi.';
+            } else {
+                contextText.textContent = 'Menampilkan keseluruhan profil kejadian, dampak jiwa, dan kerusakan fisik banjir di Kabupaten Morowali Utara (2015–2026).';
+            }
+
+            // Filter tabel log kejadian
+            filterTable();
+        }
+
+        function filterTable() {
+            const tahunVal = document.getElementById('filter-tahun').value;
+            const query = document.getElementById('search-table').value.toLowerCase().trim();
+
+            const filtered = logKejadianData.filter(item => {
+                // Filter Tahun
+                let matchYear = true;
+                if (tahunVal === '2026') matchYear = item.tahun === 2026;
+                else if (tahunVal === '2025') matchYear = item.tahun === 2025;
+                else if (tahunVal === '2015-2024') matchYear = false; // Log rinci yang terekstrak mulai Apr 2025
+
+                // Filter Pencarian Teks
+                const matchSearch = !query || 
+                    item.id.toLowerCase().includes(query) ||
+                    item.tanggal.includes(query) ||
+                    item.namaBulan.toLowerCase().includes(query) ||
+                    String(item.tahun).includes(query) ||
+                    item.dampak.toLowerCase().includes(query);
+
+                return matchYear && matchSearch;
+            });
+
+            renderTable(filtered);
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-tahun').value = 'all';
+            document.getElementById('filter-fase').value = 'all';
+            document.getElementById('search-table').value = '';
+            applyFilters();
+        }
+
+        // 6. KONTROL MODAL
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // Menutup modal jika klik area backdrop
+        window.addEventListener('click', function(e) {
+            if (e.target.id === 'modal-metadata') closeModal('modal-metadata');
+            if (e.target.id === 'modal-uat') closeModal('modal-uat');
+        });
+
+        // 7. EKSEKUSI SAAT HALAMAN DIMUAT
+        window.onload = function() {
+            initCharts();
+            initMap();
+            renderTable(logKejadianData);
+        };
+    </script>
+</body>
+</html>
